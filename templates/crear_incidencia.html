@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Reportar incidencia{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header">Reportar una incidencia</div>
+      <div class="card-body p-4">
+        {% if errores %}
+        <div class="alert alert-danger" role="alert">
+          <strong>Revisa el formulario:</strong>
+          <ul class="mb-0 mt-1">
+            {% for e in errores %}<li>{{ e }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('nueva_incidencia') }}" novalidate>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="ubicacion" class="form-label">Ubicación</label>
+              <select class="form-select" id="ubicacion" name="ubicacion" required>
+                <option value="" disabled {% if not form.get('ubicacion') %}selected{% endif %}>Selecciona…</option>
+                {% for u in ubicaciones %}
+                <option value="{{ u }}" {% if form.get('ubicacion') == u %}selected{% endif %}>{{ u }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="categoria" class="form-label">Categoría</label>
+              <select class="form-select" id="categoria" name="categoria" required>
+                <option value="" disabled {% if not form.get('categoria') %}selected{% endif %}>Selecciona…</option>
+                {% for c in categorias %}
+                <option value="{{ c }}" {% if form.get('categoria') == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label for="descripcion" class="form-label">Descripción</label>
+              <textarea class="form-control" id="descripcion" name="descripcion" rows="5"
+                        minlength="{{ descripcion_min }}" maxlength="{{ descripcion_max }}" required
+                        aria-describedby="ayuda-descripcion">{{ form.get('descripcion', '') }}</textarea>
+              <div id="ayuda-descripcion" class="form-text">
+                Entre {{ descripcion_min }} y {{ descripcion_max }} caracteres. Los espacios al inicio y al final no cuentan.
+              </div>
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="impacto" class="form-label">Impacto</label>
+              <select class="form-select" id="impacto" name="impacto" required>
+                <option value="" disabled {% if not form.get('impacto') %}selected{% endif %}>Selecciona…</option>
+                {% for i in impactos %}
+                <option value="{{ i }}" {% if form.get('impacto') == i %}selected{% endif %}>{{ i }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-6">
+              <span class="form-label d-block">¿Hay riesgo para las personas?</span>
+              <div class="form-check form-check-inline mt-2">
+                <input class="form-check-input" type="radio" name="riesgo" id="riesgo-si" value="true"
+                       {% if form.get('riesgo') == 'true' %}checked{% endif %}>
+                <label class="form-check-label" for="riesgo-si">Sí</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="riesgo" id="riesgo-no" value="false"
+                       {% if form.get('riesgo') == 'false' %}checked{% endif %}>
+                <label class="form-check-label" for="riesgo-no">No</label>
+              </div>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <a class="btn btn-outline-secondary" href="{{ url_for('dashboard') }}">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Registrar incidencia</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

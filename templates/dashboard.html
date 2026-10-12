@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}{% if usuario.rol == 'COORDINADOR' %}Tablero{% else %}Incidencias{% endif %}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+  <h1 class="h3 m-0">
+    {% if usuario.rol == 'COORDINADOR' %}Tablero de control
+    {% elif usuario.rol == 'TECNICO' %}Incidencias asignadas a mí
+    {% else %}Mis incidencias{% endif %}
+  </h1>
+  {% if usuario.rol == 'SOLICITANTE' %}
+  <a class="btn btn-primary" href="{{ url_for('nueva_incidencia') }}">Reportar incidencia</a>
+  {% endif %}
+</div>
+
+{% if metricas %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-muted-rc small">Total de incidencias</div>
+      <div class="rc-metric">{{ metricas.total }}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-muted-rc small">Porcentaje de cierre</div>
+      <div class="rc-metric" id="porcentaje-cierre">{{ metricas.porcentaje_cierre }}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-muted-rc small">Críticas sin cerrar</div>
+      <div class="rc-metric {% if metricas.criticas_abiertas %}text-danger{% endif %}" id="criticas-abiertas">{{ metricas.criticas_abiertas }}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-muted-rc small">Cerradas</div>
+      <div class="rc-metric">{{ metricas.por_estado['CERRADA'] }}</div>
+    </div></div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">Por estado</div>
+      <ul class="list-group list-group-flush">
+        {% for estado, n in metricas.por_estado.items() %}
+        <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent">
+          <span class="badge {{ ESTADO_CLASES[estado] }}">{{ estado|legible }}</span><strong>{{ n }}</strong>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">Por prioridad</div>
+      <ul class="list-group list-group-flush">
+        {% for prioridad, n in metricas.por_prioridad.items() %}
+        <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent">
+          <span class="badge {{ PRIORIDAD_CLASES[prioridad] }}">{{ prioridad }}</span><strong>{{ n }}</strong>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">
+    <form method="get" action="{{ url_for('dashboard') }}" class="row g-2 align-items-end">
+      <div class="col-12 col-md-4">
+        <label for="q" class="form-label small mb-1">Buscar</label>
+        <input type="search" class="form-control form-control-sm" id="q" name="q"
+               value="{{ filtros.q }}" placeholder="Código o descripción">
+      </div>
+      <div class="col-6 col-md-3">
+        <label for="estado" class="form-label small mb-1">Estado</label>
+        <select class="form-select form-select-sm" id="estado" name="estado">
+          <option value="">Todos</option>
+          {% for e in estados %}<option value="{{ e }}" {% if filtros.estado == e %}selected{% endif %}>{{ e|legible }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-3">
+        <label for="prioridad" class="form-label small mb-1">Prioridad</label>
+        <select class="form-select form-select-sm" id="prioridad" name="prioridad">
+          <option value="">Todas</option>
+          {% for p in prioridades %}<option value="{{ p }}" {% if filtros.prioridad == p %}selected{% endif %}>{{ p }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-flex gap-2">
+        <button class="btn btn-primary btn-sm flex-fill" type="submit">Filtrar</button>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('dashboard') }}">Limpiar</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Código</th><th>Ubicación</th><th>Categoría</th><th>Prioridad</th>
+          <th>Estado</th>
+          {% if usuario.rol != 'SOLICITANTE' %}<th>Autor</th>{% endif %}
+          {% if usuario.rol != 'TECNICO' %}<th>Técnico</th>{% endif %}
+          <th>Registrada</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inc in incidencias %}
+        <tr>
+          <td><code>{{ inc.codigo }}</code></td>
+          <td>{{ inc.ubicacion }}</td>
+          <td>{{ inc.categoria }}</td>
+          <td><span class="badge {{ PRIORIDAD_CLASES[inc.prioridad] }}">{{ inc.prioridad }}</span></td>
+          <td><span class="badge {{ ESTADO_CLASES[inc.estado] }}">{{ inc.estado|legible }}</span></td>
+          {% if usuario.rol != 'SOLICITANTE' %}<td>{{ inc.autor_nombre }}</td>{% endif %}
+          {% if usuario.rol != 'TECNICO' %}<td>{{ inc.tecnico_nombre or 'Sin asignar' }}</td>{% endif %}
+          <td class="text-muted-rc">{{ inc.creada_en|fecha_utc }}</td>
+          <td class="text-end"><a class="btn btn-outline-secondary btn-sm" href="{{ url_for('detalle', inc_id=inc.id) }}">Ver detalle</a></td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-center text-muted-rc py-5">
+            {% if filtros.q or filtros.estado or filtros.prioridad %}
+              Ninguna incidencia coincide con los filtros.
+            {% elif usuario.rol == 'SOLICITANTE' %}
+              Aún no has reportado incidencias.
+            {% elif usuario.rol == 'TECNICO' %}
+              No tienes incidencias asignadas.
+            {% else %}
+              Todavía no hay incidencias registradas.
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

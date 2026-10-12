@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}{{ inc.codigo }}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+  <div>
+    <a class="small" href="{{ url_for('dashboard') }}">Volver al listado</a>
+    <h1 class="h3 mt-1 mb-0"><code>{{ inc.codigo }}</code></h1>
+  </div>
+  <div class="d-flex gap-2">
+    <span class="badge fs-6 {{ PRIORIDAD_CLASES[inc.prioridad] }}">{{ inc.prioridad }}</span>
+    <span class="badge fs-6 {{ ESTADO_CLASES[inc.estado] }}">{{ inc.estado|legible }}</span>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-7">
+    <div class="card mb-4">
+      <div class="card-header">Datos de la incidencia</div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4 text-muted-rc fw-normal">Ubicación</dt><dd class="col-sm-8">{{ inc.ubicacion }}</dd>
+          <dt class="col-sm-4 text-muted-rc fw-normal">Categoría</dt><dd class="col-sm-8">{{ inc.categoria }}</dd>
+          <dt class="col-sm-4 text-muted-rc fw-normal">Impacto</dt><dd class="col-sm-8">{{ inc.impacto }}</dd>
+          <dt class="col-sm-4 text-muted-rc fw-normal">Riesgo para personas</dt><dd class="col-sm-8">{{ 'Sí' if inc.riesgo else 'No' }}</dd>
+          <dt class="col-sm-4 text-muted-rc fw-normal">Reportada por</dt><dd class="col-sm-8">{{ inc.autor_nombre }}</dd>
+          <dt class="col-sm-4 text-muted-rc fw-normal">Técnico</dt><dd class="col-sm-8">{{ inc.tecnico_nombre or 'Sin asignar' }}</dd>
+          <dt class="col-sm-4 text-muted-rc fw-normal">Registrada</dt><dd class="col-sm-8">{{ inc.creada_en|fecha_utc }}</dd>
+          {% if inc.cerrada_en %}
+          <dt class="col-sm-4 text-muted-rc fw-normal">Último cierre</dt><dd class="col-sm-8">{{ inc.cerrada_en|fecha_utc }}</dd>
+          {% endif %}
+          <dt class="col-sm-4 text-muted-rc fw-normal">Descripción</dt>
+          <dd class="col-sm-8 rc-prewrap mb-0">{{ inc.descripcion }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    {% if puede_asignar or puede_atender or puede_resolver or puede_validar or puede_reabrir or ventana_vencida %}
+    <div class="card">
+      <div class="card-header">Acciones</div>
+      <div class="card-body">
+
+        {% if puede_asignar %}
+        <form method="post" action="{{ url_for('asignar', inc_id=inc.id) }}" class="row g-2 align-items-end">
+          <div class="col-12 col-md-8">
+            <label for="tecnico_id" class="form-label">Asignar a un técnico</label>
+            <select class="form-select" id="tecnico_id" name="tecnico_id" required>
+              <option value="" disabled selected>Selecciona un técnico…</option>
+              {% for t in tecnicos %}<option value="{{ t.id }}">{{ t.nombre }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <button type="submit" class="btn btn-primary w-100">Asignar técnico</button>
+          </div>
+        </form>
+        {% endif %}
+
+        {% if puede_atender %}
+        <p class="text-muted-rc">Cuando empieces a trabajar en esta incidencia, pásala a atención.</p>
+        <form method="post" action="{{ url_for('atender', inc_id=inc.id) }}">
+          <button type="submit" class="btn btn-primary">Iniciar atención</button>
+        </form>
+        {% endif %}
+
+        {% if puede_resolver %}
+        <form method="post" action="{{ url_for('registrar_solucion', inc_id=inc.id) }}">
+          <label for="solucion" class="form-label">Solución aplicada</label>
+          <textarea class="form-control" id="solucion" name="solucion" rows="4"
+                    minlength="{{ solucion_min }}" maxlength="{{ solucion_max }}" required
+                    aria-describedby="ayuda-solucion"></textarea>
+          <div id="ayuda-solucion" class="form-text">Entre {{ solucion_min }} y {{ solucion_max }} caracteres.</div>
+          <button type="submit" class="btn btn-primary mt-3">Enviar a validación</button>
+        </form>
+        {% endif %}
+
+        {% if puede_validar %}
+        {% if ultima_solucion %}
+        <div class="mb-3">
+          <div class="text-muted-rc small">Solución propuesta</div>
+          <div class="rc-prewrap">{{ ultima_solucion.detalle }}</div>
+        </div>
+        {% endif %}
+        <form method="post" action="{{ url_for('confirmar', inc_id=inc.id) }}" class="mb-4">
+          <button type="submit" class="btn btn-success">Confirmar y cerrar</button>
+        </form>
+        <form method="post" action="{{ url_for('rechazar', inc_id=inc.id) }}">
+          <label for="motivo-rechazo" class="form-label">Motivo del rechazo</label>
+          <textarea class="form-control" id="motivo-rechazo" name="motivo" rows="3"
+                    minlength="{{ motivo_min }}" maxlength="{{ motivo_max }}" required
+                    aria-describedby="ayuda-rechazo"></textarea>
+          <div id="ayuda-rechazo" class="form-text">Entre {{ motivo_min }} y {{ motivo_max }} caracteres.</div>
+          <button type="submit" class="btn btn-outline-danger mt-3">Rechazar solución</button>
+        </form>
+        {% endif %}
+
+        {% if puede_reabrir %}
+        <p class="text-muted-rc">Puedes reabrir esta incidencia hasta el {{ limite_reapertura|fecha_utc }}
+          ({{ horas_ventana }} horas después del cierre).</p>
+        <form method="post" action="{{ url_for('reabrir', inc_id=inc.id) }}">
+          <label for="motivo-reapertura" class="form-label">Motivo de la reapertura</label>
+          <textarea class="form-control" id="motivo-reapertura" name="motivo" rows="3"
+                    minlength="{{ motivo_min }}" maxlength="{{ motivo_max }}" required
+                    aria-describedby="ayuda-reapertura"></textarea>
+          <div id="ayuda-reapertura" class="form-text">Entre {{ motivo_min }} y {{ motivo_max }} caracteres.</div>
+          <button type="submit" class="btn btn-warning mt-3">Reabrir incidencia</button>
+        </form>
+        {% endif %}
+
+        {% if ventana_vencida %}
+        <p class="mb-0 text-muted-rc">
+          Esta incidencia ya no se puede reabrir: pasaron más de {{ horas_ventana }} horas desde el cierre.
+          Si el problema persiste, reporta una incidencia nueva.
+        </p>
+        {% endif %}
+
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-12 col-lg-5">
+    <div class="card">
+      <div class="card-header">Historial</div>
+      <div class="card-body">
+        <ol class="rc-timeline ps-0 mb-0">
+          {% for h in historial %}
+          <li>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <strong>{{ h.accion|legible|capitalize }}</strong>
+              {% if h.estado_inicial %}
+              <span class="badge {{ ESTADO_CLASES[h.estado_inicial] }}">{{ h.estado_inicial|legible }}</span>
+              <span class="text-muted-rc">→</span>
+              {% endif %}
+              <span class="badge {{ ESTADO_CLASES[h.estado_final] }}">{{ h.estado_final|legible }}</span>
+            </div>
+            <div class="text-muted-rc small">{{ h.autor_nombre }} · {{ h.fecha|fecha_utc }}</div>
+            {% if h.detalle %}
+            <div class="mt-1 rc-prewrap">
+              {% if h.accion == 'RESOLVER' %}<span class="text-muted-rc">Solución: </span>
+              {% elif h.accion in ('RECHAZAR', 'REABRIR') %}<span class="text-muted-rc">Motivo: </span>{% endif %}{{ h.detalle }}
+            </div>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

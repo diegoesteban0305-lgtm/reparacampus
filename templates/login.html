@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Iniciar sesión{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="card shadow-lg">
+      <div class="card-body p-4">
+        <h1 class="h4 mb-1">Iniciar sesión</h1>
+        <p class="text-muted-rc mb-4">Gestión de incidencias de infraestructura de la USB.</p>
+        <form method="post" action="{{ url_for('login') }}" novalidate>
+          <div class="mb-3">
+            <label for="email" class="form-label">Correo institucional</label>
+            <input type="email" class="form-control" id="email" name="email" autocomplete="username" required autofocus>
+          </div>
+          <div class="mb-4">
+            <label for="password" class="form-label">Contraseña</label>
+            <input type="password" class="form-control" id="password" name="password" autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Entrar</button>
+        </form>
+      </div>
+    </div>
+
+    {% if cuentas %}
+    <div class="card mt-4">
+      <div class="card-header">Cuentas de prueba</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead><tr><th>Rol</th><th>Correo</th><th>Contraseña</th></tr></thead>
+          <tbody>
+            {% for c in cuentas %}
+            <tr>
+              <td><span class="badge text-bg-secondary">{{ c.rol }}</span></td>
+              <td>{{ c.email }}</td>
+              <td><code>{{ c.password }}</code></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
